@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BSC Advogados - Painel de Cobrança</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Merriweather:wght@700;900&display=swap');
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8f9fa; /* Um cinza muito claro */
+        }
+        
+        /* Fontes da BSC */
+        h1, h2, h3 {
+            font-family: 'Merriweather', serif;
+        }
+
+        /* Cores da BSC */
+        :root {
+            --cor-verde-bsc: #00332c; /* Verde escuro do logo */
+            --cor-dourado-bsc: #c3a177; /* Dourado/Bege do logo */
+        }
+
+        /* Estilos da tabela */
+        .cobranca-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            font-size: 0.85rem;
+        }
+        .cobranca-table th, .cobranca-table td {
+            border: 1px solid #ddd;
+            padding: 10px 12px;
+            text-align: left;
+            white-space: nowrap; /* Impede que o texto quebre linha */
+        }
+        .cobranca-table th {
+            background-color: var(--cor-verde-bsc);
+            color: white;
+            font-weight: 600;
+            position: sticky; /* Cabeçalho fixo ao rolar horizontalmente */
+            top: 0;
+        }
+        .cobranca-table tbody tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        /* Container rolável para a tabela */
+        .table-container {
+            width: 100%;
+            overflow-x: auto; /* Permite rolar a tabela horizontalmente */
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+        }
+    </style>
+</head>
+<body class="bg-zinc-50 text-gray-800 antialiased">
+
+    <div class="container mx-auto p-4 md:p-8 max-w-7xl">
+        
+        <header class="flex flex-col md:flex-row justify-between items-center mb-10 pb-6 border-b-2" style="border-color: var(--cor-dourado-bsc);">
+            <div>
+                <h1 class="text-3xl md:text-4xl font-bold" style="color: var(--cor-verde-bsc);">
+                    Painel de Cobrança
+                </h1>
+                <p class="text-xl text-gray-600">BSC Advogados e Associados</p>
+            </div>
+            <img src="BSC-1.jpg" alt="Logo BSC Advogados" class="w-48 h-auto mt-4 md:mt-0">
+        </header>
+
+        <main>
+            <p class="text-center text-gray-600 mb-6 max-w-2xl mx-auto">
+                Abaixo está o status detalhado das ações de cobrança em andamento.
+            </p>
+            
+            <div class="table-container bg-white">
+                <div id="tabela-placeholder">
+                    <p class="text-center p-10 text-gray-500">Carregando dados da planilha...</p>
+                </div>
+            </div>
+        </main>
+
+    </div>
+
+    <script>
+        // Função que é executada quando a página termina de carregar
+        document.addEventListener('DOMContentLoaded', () => {
+            loadCobrancaTable();
+        });
+
+        // Função para carregar o JSON e construir a tabela
+        async function loadCobrancaTable() {
+            const container = document.getElementById('tabela-placeholder');
+            
+            try {
+                // 1. Buscar o arquivo de dados JSON
+                const response = await fetch('cobranca_data.json');
+                if (!response.ok) {
+                    throw new Error(`Erro ao buscar dados: ${response.statusText}`);
+                }
+                const data = await response.json();
+
+                if (data.length === 0) {
+                    container.innerHTML = '<p class="text-center p-10 text-red-500">Nenhum dado encontrado.</p>';
+                    return;
+                }
+
+                // 2. Criar o Cabeçalho da Tabela (dinamicamente)
+                const headers = Object.keys(data[0]);
+                let tableHtml = '<table class="cobranca-table">';
+                
+                tableHtml += '<thead><tr>';
+                headers.forEach(header => {
+                    tableHtml += `<th>${header}</th>`;
+                });
+                tableHtml += '</tr></thead>';
+
+                // 3. Criar o Corpo da Tabela
+                tableHtml += '<tbody>';
+                data.forEach(item => {
+                    // Adiciona classes de destaque (Sim/Não)
+                    const cobrancaClass = item['Cobrança'] === 'Sim' ? 'text-green-700 font-semibold' : 'text-red-700';
+                    const ajuizadoClass = item['Ajuizado'] === 'Sim' ? 'text-green-700 font-semibold' : 'text-red-700';
+
+                    tableHtml += '<tr>';
+                    headers.forEach(header => {
+                        let value = item[header] || 'N/A';
+                        
+                        // Aplicar estilos
+                        if (header === 'Cobrança') {
+                            tableHtml += `<td class="${cobrancaClass}">${value}</td>`;
+                        } else if (header === 'Ajuizado') {
+                            tableHtml += `<td class="${ajuizadoClass}">${value}</td>`;
+                        } else if (header.startsWith('Vlr.')) {
+                            tableHtml += `<td class="font-medium text-gray-900">${value}</td>`;
+                        } else {
+                            tableHtml += `<td>${value}</td>`;
+                        }
+                    });
+                    tableHtml += '</tr>';
+                });
+                tableHtml += '</tbody></table>';
+
+                // 4. Inserir a tabela no container
+                container.innerHTML = tableHtml;
+
+            } catch (error) {
+                console.error('Erro ao renderizar tabela:', error);
+                container.innerHTML = `<p class="text-center p-10 text-red-600"><b>Erro:</b> ${error.message}. Verifique se o arquivo <b>cobranca_data.json</b> foi enviado para o GitHub.</p>`;
+            }
+        }
+    </script>
+
+</body>
+</html>
